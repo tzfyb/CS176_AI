@@ -1,0 +1,659 @@
+\documentclass{article}
+\usepackage{amsmath}
+
+\usepackage{full page}  
+
+\usepackage{listings} 
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage[tight,footnotesize]{subfigure}
+\usepackage{graphicx}
+
+\graphicspath{ {images/} }
+
+\definecolor{javared}{rgb}{0.7,0,0} % strings
+\definecolor{javagreen}{rgb}{0.25,0.6,0.35} % comments
+\definecolor{javapurple}{rgb}{0.55,0,0.40} % keywords
+\definecolor{javadocblue}{rgb}{0.25,0.35,0.85} % javadoc
+ 
+\lstset{language=Java,
+basicstyle=\ttfamily,
+keywordstyle=\color{javapurple}\bfseries,
+stringstyle=\color{javared},
+commentstyle=\color{javagreen},
+morecomment=[s][\color{javadocblue}]{/**}{*/},
+numbers=left,
+numberstyle=\tiny\color{black},
+stepnumber=2,
+numbersep=10pt,
+tabsize=2,
+showspaces=false,
+showstringspaces=false,
+frame=shadowbox,
+numbers=left
+} 
+
+
+
+% set the document title, author, and date here.
+%  once set, the \maketitle command (within the document)
+%  will display them nicely
+\title{AI HW2: Mazeworld Solution}
+\author{Tianyuan Zhang}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+\begin{flushleft}
+The Maze Problem is one of the most classic and interesting problems in the artificial intelligence field. It is mainly about searching the branch through several possible states. In this report, I majorly discuss three parts, 1) A* algorithm as a searching method; 2) Multirobot problem, where the collision problem is introduced 3) Blind robot problem, where the robot doesn't know where it starts and 4) finally, some further discussion and paper review.
+
+
+\section{Build the Maze}
+\subsection{Maze Representation}
+I use the plain txt file as the input file and use characters to represent the maze -  '\#' represents the wall and '.' represents the floor. Here is a sample 7*7 maze:
+
+\includegraphics{sampleMaze}
+\subsection{Coordinate}
+For convenient, I use coordinate (0, 0) represents the top-left corner position and (m, n) represents the bot-right corner position, where m = width - 1 and n = height - 1.
+\subsection{Read a Maze}
+There is a class named MazeWorld to read the maze and provide some basic functions for the maze. Here is an example to read a maze from a file named $simpleMaze.txt$:
+\begin{lstlisting}
+MazeWorld maze = new MazeWorld("singleMaze.txt");
+\end{lstlisting}
+
+\begin{flushleft}
+Note that the input file is under the folder of the project.
+\end{flushleft}
+
+\end{flushleft}
+
+\section{A* search}
+\subsection{Basic Idea}
+
+A* search is a type of informed search, that it knows some information about the current position and the goal, which is different from BFS. In BFS, the search only considers the cost (The distance from the start to the current position), while in A* search, the heuristic is also introduced. A heuristic estimates a distance from the current state to the goal state. Hence we can regard the $cost$ as the estimation for the past and $heuristic$ as the estimation for the future. Every time when A* search need to pick next state, it will always find the highest priority one in the priorityQuene and search through it.
+
+\subsection{Single Robot Problem}
+Given a start position and a goal, find a path. Naturally, the state in this problem is the position - the coordinate $(x, y)$ of the robot.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+public List<SearchNode> astarSearch(){
+		resetStats();
+		
+		PriorityQueue<SearchNode> my_pq = new PriorityQueue<SearchNode>();
+		HashMap<SearchNode, Double> visited = 
+			new HashMap<SearchNode, Double>();
+		HashMap<SearchNode, SearchNode> parent = 
+			new HashMap<SearchNode, SearchNode>();
+		
+		my_pq.add(startNode);
+		
+		while(!my_pq.isEmpty()){
+			updateMemory(my_pq.size() + parent.size());
+			incrementNodeCount();
+			SearchNode cur = my_pq.poll();
+			//If a same node with higher priority exists, discard the node
+			if(visited.containsKey(cur) && visited.get(cur) 
+				<= cur.getPriority())
+				continue;
+			else visited.put(cur, cur.getPriority());
+			
+			//Goal reached, return the result chain
+			if(cur.goalTest()) 
+				return backchain(cur, parent);
+			
+			ArrayList<SearchNode> suc = cur.getSuccessors();
+			for(SearchNode s : suc){
+				if(!visited.containsKey(s) || 
+					visited.get(s) > s.getPriority()){
+					parent.put(s, cur);
+					my_pq.add(s);
+				}
+			}	
+		}
+		return null;
+	}
+\end{lstlisting}
+
+\begin{flushleft}
+\textbf{Line 4-8:} Here I use one priority queue and two hashMap. HashMap $visited$ stores the key-value pair node and its priority value, HashMap $parent$ stores key-value pair node and its previous node.
+
+\textbf{Line 17-20:} I use the method in the instruction to deal with the situation that the same node with different priority found during the search process. The search will put the node into the priorityQueue again only if the node now has a higher priority than before.
+
+\textbf{Line 28-29:} Same idea, only the unvisited node or the same node but with higher priority will be put into the priorityQueue.
+
+For the other part, it is quite similar to the BFS search.
+\end{flushleft}
+
+\subsection{Output Demostration}
+I tried the 7 by 7 maze in the instruction. The following is the statistics result compared to the BFS search result. All the input maze files are in the \textbf{Input} folder and result GIF files are in the \textbf{Result} folder. 
+
+\begin{lstlisting}
+BFS:  
+  Nodes explored during search:  37
+  Maximum space usage during search 37
+  path length: 13
+  cost: 12.0
+A*:  
+  Nodes explored during search:  21
+  Maximum space usage during search 32
+  path length: 13
+  cost: 12.0
+\end{lstlisting}
+
+\begin{flushleft}
+The result animation GIF file \textbf{astartResult.gif} can be seen in the folder \textbf{result}. And from the result, ouput we can see that with a rather good heuristic, A* search find a same length of the path with less space and time consuming. Here is some states picture, where S stands for the starting point and G stands for the goal point.
+\end{flushleft}
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{bfsAnimation_0}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{bfsAnimation_3}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{bfsAnimation_6}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{bfsAnimation_9}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{bfsAnimation_12}
+\endminipage
+\end{figure}
+
+\clearpage
+\section{MultiRobot Problem}
+
+\subsection{Discussion Problems}
+\subsubsection{State Definition}
+\begin{flushleft}
+In the multi robots problem, we need to have the position state for every robot. The numbers we need is 2k - k for x coordinate and k for y coordinate. Furthermore, in this assignment, we introduce the \textbf{turn} to reduce the successor's states from a state, prevent redundant states. Represent it as the matrix, it looks as follow:
+$$\begin{pmatrix}
+x_0 & y_0 \\
+x_1 & y_1 \\
+\vdots & \vdots \\	
+x_{k-1} & y_{k-1}
+\end{pmatrix}$$
+
+where there are k robots and each row represents a robot's coordination.
+\end{flushleft}
+
+\subsubsection{Upper Bound}
+\begin{flushleft}
+In the n*n size of maze and k robots, the upper bound of this problem is obviously $n^{2k}$, as each position can have k robots, including the illegal states.
+\end{flushleft}
+
+\subsubsection{Collision States}
+\begin{flushleft}
+If the number of walls is w, then the number of collision states would be $(n^2-w)^k - C_{n^2-w}^k$, the total available position minus legal states.
+\end{flushleft}
+
+\subsubsection{Sparse Maze}
+\begin{flushleft}
+If the maze is sparse and the there are a lot of robots, the BFS is not computationally feasible. In an n*n maze with k robot, then each step will generate $a*k^4$, where a is the states from the previous step. It is easy to see that  with the exponential increasing it is impossible to solve this problem by using BFS method.
+\end{flushleft}
+
+\subsubsection{Heuristic Proof}
+\begin{flushleft}
+In my implementation, I use the sum of all robots' Manhattan distance as the heuristic,
+$h = \sum^{k-1}_{i=0}h_i$, where $h_i$ represents the Manhattan distance from robot $i$ to the goal. A function is monotonic as long as:
+
+$$h(N) \leq c(N,P)+h(P) $$
+$$h(G)=0$$
+where h is the consistent heuristic function, N is any node in the graph, P is any descendant of N, G is any goal node,  c(N,P) is the cost of reaching node P from N.
+
+And this is fairly easy to prove. Consider the single robot situation. In an empty maze, we have $h(N) = c(N,P)+h(P) $. And in a maze with obstacles, the actual cost may larger than h. And append this to the multirobots situation, this heuristic is still monotonic.
+\end{flushleft}
+
+\subsubsection{Some Interesting Examples}
+I will discuss this part in detail in the result demonstration part.
+
+\subsubsection{8-Puzzles and Heuristic}
+The 8 -puzzle problem is a special case of multi-robots problem where there is no walls and only one free space that allows the robots to move. The goal is to let each robot be in their corresponding positions.
+
+\subsubsection{8-Puzzles Disjoint Set}
+The 2 disjoint set means that any state in one of the sets is reachable from any other state in that set, but not from any state in the other set. I am thinking use a BFS to search the path for the 8-puzzle problem. First I will pick an arbitrary state as the beginning and use BFS to generate all the possible states. Then I pick another state that not belongs to the set of states to generate from the previous step. Finally, the sum of these two sets' size should be the total possible size of the 8-puzzle problem.
+
+
+\subsection{Code Implementation}
+\subsubsection{getSuccessors}
+\begin{lstlisting}
+public ArrayList<SearchNode> getSuccessors(){
+			ArrayList<SearchNode> suc = new ArrayList<SearchNode>();
+			Integer[] xNew = new Integer[rob_num], yNew = new Integer[rob_num];
+			for(int[] move : moves){
+				for (int r = 0; r < rob_num; r++) {
+					xNew[r] = robots[r][0];
+					yNew[r] = robots[r][1];
+				}
+				xNew[turn] = robots[turn][0] + move[0];
+				yNew[turn] = robots[turn][1] + move[1];
+				
+				if(maze_grid.isSafe(xNew[turn], yNew[turn]) && 
+					noCollision(xNew, yNew)){
+
+					SearchNode cur = new MultiMazeNode(xNew, yNew, 
+						getCost() + 1.0, (turn + 1) \% rob_num);
+					suc.add(cur);
+				}
+			}
+			
+			return suc;
+		}
+\end{lstlisting}
+
+The difference between multi-robot and single-robot is that in multi-robots, \textbf{getSuccessors} need to try every direction plus not move action for the robot in that turn. 
+
+\subsubsection{noCollision}
+Also apart from \textbf{isSafe} method, we need another method \textbf{noCollision} to ensure that different robots will not interfere each other. The code is as follows:
+
+\begin{lstlisting}
+private boolean noCollision(Integer[] xNew, Integer[] yNew){
+			HashSet<Integer> x_cor = new HashSet<Integer>();
+			HashSet<Integer> y_cor = new HashSet<Integer>();
+			for(int i = 0; i < rob_num; i++){
+				x_cor.add(xNew[i]);
+				y_cor.add(yNew[i]);
+			}
+			if(x_cor.size() != rob_num && y_cor.size() != rob_num) return false;
+			return true;
+		}
+\end{lstlisting}
+The idea of \textbf{noCollision} is simple, just put each robot's current state into a HashMap and if finally the HashSet has the same number of value as the robots' number, then there is no collision.
+
+\subsubsection{getHeuristic}
+In this part, I use the sum of all robots' Manhattan distance as the heuristic in the multi-robots problem.
+\begin{lstlisting}
+public double getHeuristic() {
+			// TODO Auto-generated method stub
+			double res = 0;
+			for(int i = 0; i < rob_num; i++)
+				res += Math.abs(gx[i] - robots[i][0]) +
+						 Math.abs(gy[i] - robots[i][1]);
+			return res;
+		}
+\end{lstlisting}
+
+\subsection{Result Demostration}
+In this part, I will show five examples that I think are interesting. All the input maze files are in the \textbf{Input} folder and result GIF files are in the \textbf{Result} folder.
+
+\subsubsection{Yield Example}
+In this example, one of the robots must yield another robot first so that it can get to its goal. Here show the start and interval states. \textbf{A} and \textbf{B} are two robots and \textbf{a} and \textbf{b} are their goals respectively.
+
+\begin{lstlisting}
+Multi-A*:  
+  path length: 19
+  Nodes explored during search:  1002
+  Maximum space usage during search 1457
+\end{lstlisting}
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{yield_0}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{yield_4}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{yield_9}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{yield_13}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{yield_18}
+\endminipage
+\end{figure}
+
+\clearpage
+\subsubsection{Reorder Robots}
+In this example, the order of robots reverses in the goal state. However, the maze is narrow. The uppercase letters represent different robots and the lowercase letters represent their corresponding different goals.
+
+\begin{lstlisting}
+Multi-A*:  
+  path length: 43
+  Nodes explored during search:  1154
+  Maximum space usage during search 959
+\end{lstlisting}
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{reorder_0}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{reorder_18}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{reorder_27}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{reorder_35}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{reorder_42}
+\endminipage
+\end{figure}
+
+\clearpage
+
+\subsubsection{Crossroad}
+In this example, two robots are facing a crossroad situation.  
+
+\begin{lstlisting}
+Multi-A*:  
+  path length: 20
+  Nodes explored during search:  116
+  Maximum space usage during search 224
+\end{lstlisting}
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{cross_0}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{cross_4}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{cross_9}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{cross_14}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{cross_19}
+\endminipage
+\end{figure}
+
+\clearpage
+\subsubsection{8-Puzzles}
+A relatively small maze with a large amount of robots.
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_0}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_7}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_14}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_21}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_28}
+\endminipage
+\end{figure}
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_35}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_42}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_49}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_56}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_63}
+\endminipage
+\end{figure}
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{8-puzzle_70}
+\endminipage\hfill
+\end{figure}
+
+\clearpage
+\subsubsection{Large Maze}
+Two robots search for a path in a very large maze.
+
+\begin{lstlisting}
+Multi-A*:  
+  path length: 362
+  Nodes explored during search:  2962564
+  Maximum space usage during search 1366708
+\end{lstlisting}
+\begin{figure}[!htb]
+
+\minipage{1.0\textwidth}
+  \includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{largeMaze}
+\endminipage\hfill
+\end{figure}
+
+\clearpage
+\section{Blind Robot Problem}
+\subsection{Problem Definition and States}
+The basic idea of this problem is to converge the belief states into one goal states. The initial states are much like a multi-robot problem, that we assume each floor has a robot. Then we give the robots instruction simultaneously and finally with the merging of states, we have just one left, which is the goal. And our code needs to find this series of instruction to ensure that these states will finally converge to the goal state.
+\subsection{Heuristic Function}
+For the heuristic function in blind robot problem, I use the \textbf{Manhattan distance} from center position to the goal and the \textbf{standard deviation} as the estimation of a current state. 
+$$\textbf{c}_{x} = 1/k*\sum^{k-1}_{i=0}x_i$$
+$$\textbf{c}_{y} = 1/k*\sum^{k-1}_{i=0}y_i$$
+$$\textbf{SD} = 1/k*\sum^{k-1}_{i=0}Distance((x_i, y_i), (c_x, c_y)) $$
+
+where \textbf{c} is the center point. Then
+$$h = \textbf{Max}(Manhattan(\textbf{c}_{x,y}, \textbf{g}_{x,y}), SD)$$
+\begin{flushleft}
+To prove the consistency of the heuristic function, it is similar to the multi-robot one. It is obvious that $h(G)=0$, as at this point, the center would be the same as the goal, which makes the Manhattan distance to be 0, and the standard deviation is 0. As for $h(N) \leq c(N,P)+h(P)$, we first consider the Manhattan distance part. We can regard it as a single robot problem. The single robot at the center \textbf{c} is the representative. In an empty maze, we have $h(N)=c(N,P)+h(P)$, then as we give instructions to all the belief states, the center robot \textbf{c} may or may not change, but the Manhattan distance is still the lower bound it need. And in a maze with obstacles, the actually cost may larger than h, which makes this  inequality satisfy. Then we consider the standard deviation part. In the process, the states may diverge or converge. In the diverging situation, the inequality is obviously hold. In the converging situation, the cost would be the sum of distance of each states' change, which is greater than the $h(P)$'s decreasing speed, which means the inequality holds.
+\end{flushleft}
+
+\clearpage
+\subsection{Code Implementation}
+\subsubsection{getSuccessors}
+\begin{lstlisting}
+public ArrayList<SearchNode> getSuccessors() {
+	// TODO Auto-generated method stub
+	ArrayList<SearchNode> suc = new ArrayList<SearchNode>();
+	for(int[] move : moves){
+		HashSet<Coor> nextStates = new HashSet<Coor>();
+		for(Coor state : states){
+			Coor next = new Coor(state.x + move[0], state.y + move[1]);
+			if(maze_grid.isSafe(next.x, next.y))
+				nextStates.add(next);
+			else
+				nextStates.add(state);
+		}
+		suc.add(new BlindMazeNode(nextStates, getCost() + 
+				1.0 * nextStates.size()));
+	}
+	return suc;
+}
+\end{lstlisting}
+
+The \textbf{getSuccessors} method is quite straightforward. Just need to try each direction from the current state and reserve the states that are safe.
+
+\subsubsection{Constructor}
+
+In \textbf{constructor} we need to add every possible position into the $startNdoe$.
+
+\begin{lstlisting}
+public BlindMazeProblem(MazeWorld m, int gx, int gy){
+	maze_grid = m;
+	goal = new Coor(gx, gy);
+	HashSet<Coor> startCoor = new HashSet<Coor>();
+	for(int i = 0; i < maze_grid.width; i++){
+		for(int j = 0; j < maze_grid.height; j++){
+			if(maze_grid.isSafe(i, j))
+				startCoor.add(new Coor(i, j));
+		}
+	}
+	startNode = new BlindMazeNode(startCoor, 0);
+}
+\end{lstlisting}
+
+
+
+\subsubsection{getHeuristic}
+
+As I mentioned before, I use the Manhattan distance from center of all the position to the goal as well as the standard deviation as the heuristic.
+
+\begin{lstlisting}
+public double getHeuristic() {
+	// TODO Auto-generated method stub
+	double centerX = 0.0, centerY = 0.0;
+	//Center Point
+	for(Coor state : states){
+		centerX += state.x;
+		centerY += state.y;
+	}
+	centerX /= states.size();
+	centerY /= states.size();
+			
+	//Manhattan Distance
+	double dist = Math.abs(centerX - goal.x) + Math.abs(centerY - goal.y);
+			
+	//Standard Deviation
+	double sDiviation = 0.0;
+	for(Coor state : states){
+		sDiviation += Math.pow(state.x - centerX, 2) + Math.pow(state.y -          centerY, 2);
+	}
+	sDiviation = Math.pow(sDiviation / states.size(), 0.5);
+			
+	return Math.max(dist, sDiviation);
+}
+
+\end{lstlisting}
+
+\clearpage
+\subsection{Result Demonstration}
+
+All the input maze files are in the \textbf{Input} folder and result GIF files are in the \textbf{Result} folder.
+
+\subsubsection{Empty 3 by 3 Maze}
+\begin{lstlisting}
+Blind-A*:  
+  path length: 5
+  Nodes explored during search:  14
+  Maximum space usage during search 92
+
+\end{lstlisting}
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{3_3_0}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{3_3_1}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{3_3_2}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{3_3_3}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{3_3_4}
+\endminipage
+\end{figure}
+
+\subsubsection{5 by 5 maze}
+
+\begin{lstlisting}
+Blind-A*:  
+  path length: 11
+  Nodes explored during search:  940
+  Maximum space usage during search 6574
+\end{lstlisting}
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{5_5_0}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{5_5_2}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{5_5_4}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{5_5_7}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{5_5_10}
+\endminipage
+\end{figure}
+
+\clearpage
+\subsubsection{7 by 7 maze}
+\begin{lstlisting}
+Blind-A*:  
+  path length: 21
+  Nodes explored during search:  631969
+  Maximum space usage during search 4423777
+\end{lstlisting}
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_0}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_2}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_4}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_6}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_8}
+\endminipage
+\end{figure}
+
+\begin{figure}[!htb]
+
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_10}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_12}
+\endminipage\hfill
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_14}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_17}
+\endminipage
+\minipage{0.2\textwidth}
+  \includegraphics[width=\linewidth]{7_7_20}
+\endminipage
+\end{figure}
+
+
+\subsection{Discussion: Plynomial-time blind robot planning}
+\begin{flushleft}
+It is fairly obvious that the plan always exists if the size of the maze is finite and the goal is in the same connected component of the maze as the start. We can just run a single maze search from each possible start in the maze, and combine all the possible paths together, there has to be one with the same series of instructions as the plan generated by the problem 3's implementation.
+
+As for the motion planner, the main idea is to reduce as many states in each step. First, consider a N*N empty maze. Suppose the goal is at the bottom-right corner, the best strategy would be move right N times, reduce belief states from $N^2$ to N, the total movement would be $N^2$ + ($N^2$-1) + ... + ($N$ + 1). Then we move bottom N times, reduce belief states from N to 1, the total movement is  The total movement would be $N$ + ($N$ - 1) + ... + 1. Combine them together the total movement would be O($N^4$).
+
+So append this to the maze with walls, the strategy would be clear. As we know the maze beforehand, in each step, we just need to find a direction that makes the most robots that cannot move, which means to reduce as much belief states as possible. It is obvious that in a maze with obstacles, in each step the reduced states will be larger than in an empty maze, which means that we can solve the blind robot problem in a polynomial-time if we know the maze beforehand.
+\end{flushleft}
+
+\clearpage
+\section{Literature Review}
+\begin{flushleft}
+I am a graduate student.
+
+I read the article Finding optimal solutions to cooperative pathfinding problem. In a multi-robots problem where there are k robots, the state space is $N^k$. This article tries to implement an efficient method to find the optimal solution in this exponential states space. The basic idea of their method is to do an A* search for each individual robot. Then they tried to resolve the conflict that occurs in the k paths. If the conflict cannot be resolved, they merge those robots into a group with m robots and do an m-robots problem.Furthermore, they even combine the method of iterative deepening to face the real-time demand. The result shows a significant improvement in different types of maze problem. I think this is quite similar to the idea of the quick sort, that in real world multi-robot problem, there may be not that much conflict among these robots and we can save time with this assumption, though in the worst case the time complexity of the method in the article is still exponential.
+\end{flushleft}
+
+\end{document}
